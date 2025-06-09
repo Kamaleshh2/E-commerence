@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Checkout</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            background-color: #f4f4f4;
+            color: #333;
+            margin: 0;
+            padding: 0;
+        }
+        .container {
+            width: 60%;
+            margin: auto;
+            background: #fff;
+            padding: 20px;
+            box-shadow: 0 0 10px #ccc;
+            margin-top: 50px;
+        }
+        h1, h2 {
+            text-align: center;
+        }
+        form {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        label {
+            font-weight: bold;
+        }
+        input, button {
+            padding: 10px;
+            font-size: 16px;
+        }
+        button {
+            background: #28a745;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+        button:hover {
+            background: #218838;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>Checkout</h1>
+    <form id="payment-form">
+        <label for="name">Name on Card</label>
+        <input type="text" id="name" placeholder="Full Name" required>
+
+        <label for="email">Email</label>
+        <input type="email" id="email" placeholder="example@mail.com" required>
+
+        <label for="card-element">Credit or debit card</label>
+        <div id="card-element"><!-- Stripe Element will go here --></div>
+
+        <button id="submit-button">Pay Now</button>
+        <div id="error-message"></div>
+    </form>
+</div>
+
+<script src="https://js.stripe.com/v3/"></script>
+<script>
+    const stripe = Stripe("pk_test_your_publishable_key");  // Replace with your Stripe public key
+    const elements = stripe.elements();
+    const cardElement = elements.create("card");
+    cardElement.mount("#card-element");
+
+    const form = document.getElementById("payment-form");
+    const submitButton = document.getElementById("submit-button");
+
+    form.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        submitButton.disabled = true;
+
+        const { paymentMethod, error } = await stripe.createPaymentMethod({
+            type: "card",
+            card: cardElement,
+            billing_details: {
+                name: document.getElementById("name").value,
+                email: document.getElementById("email").value
+            }
+        });
+
+        if (error) {
+            document.getElementById("error-message").textContent = error.message;
+            submitButton.disabled = false;
+        } else {
+            // Send payment method ID to the server
+            const response = await fetch("/checkout", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ paymentMethodId: paymentMethod.id })
+            });
+
+            const result = await response.json();
+            
+            if (result.success) {
+                alert("Payment successful!");
+                window.location.href = "/success";  // Redirect after success
+            } else {
+                alert("Payment failed: " + result.error);
+                submitButton.disabled = false;
+            }
+        }
+    });
+</script>
+
+</body>
+</html>
